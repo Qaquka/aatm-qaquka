@@ -328,6 +328,17 @@ async function handleMediainfo(req, res, cfg) {
   sendJson(res, 200, { path: valid, report });
 }
 
+async function handleMediainfoGet(req, res, cfg) {
+  const query = new URL(req.url, `http://127.0.0.1:${PORT}`).searchParams;
+  const requestedPath = query.get('path');
+  if (!requestedPath) return sendJson(res, 400, { error: 'path query parameter is required' });
+  const valid = validatePathInRoots(requestedPath, cfg.browseRoots);
+  const available = await detectMediainfo();
+  if (!available) return sendJson(res, 503, { error: 'mediainfo CLI not installed in container/host' });
+  const report = await runMediainfo(valid);
+  sendJson(res, 200, { path: valid, report });
+}
+
 async function handleCreateTorrent(req, res, cfg) {
   const body = await parseBody(req);
   const sourcePath = validatePathInRoots(body.path, cfg.browseRoots);
@@ -454,10 +465,61 @@ async function handleUploadLaCale(req, res, cfg) {
     body: form
   });
   const txt = await response.text();
-  if (!response.ok) return sendJson(res, 502, { error: 'La-Cale upload failed', details: txt.slice(0, 500) });
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      return sendJson(res, 401, { error: 'La-Cale authentication failed', details: txt.slice(0, 500) });
+    }
+    if (response.status === 429) {
+      return sendJson(res, 429, { error: 'La-Cale rate limit exceeded', details: txt.slice(0, 500) });
+    }
+    return sendJson(res, 502, { error: 'La-Cale upload failed', details: txt.slice(0, 500) });
+  }
 
   appendHistory({ sourcePath: body.sourcePath || '', torrentPath, nfoPath: body.nfoPath || '', mediaType: body.mediaType || '', torrentCreated: true, nfoCreated: true, lacaleUpload: 'ok', qbitPush: 'pending' });
   sendJson(res, 200, { ok: true, details: txt.slice(0, 500) });
+}
+
+async function handleNfoCreate(req, res, cfg) {
+  const body = await parseBody(req);
+  if (!body.path) return sendJson(res, 400, { error: 'path is required' });
+  const sourcePath = validatePathInRoots(body.path, cfg.browseRoots);
+  const type = body.mediaType || classifyMedia(sourcePath);
+  const outputDir = buildOutputPath(cfg, sourcePath, type);
+  fs.mkdirSync(outputDir, { recursive: true });
+
+  let mediaInfo = {};
+  if (await detectMediainfo()) {
+    try { mediaInfo = await runMediainfo(sourcePath); } catch {}
+  }
+
+  const baseName = path.basename(sourcePath);
+  const nfoPath = path.join(outputDir, `${baseName}.nfo`);
+  fs.writeFileSync(nfoPath, createNfoText({ sourcePath, mediaInfo, announce: cfg.torrent.announce, source: cfg.torrent.source }));
+
+  appendHistory({
+    sourcePath,
+    outputDir,
+    torrentPath: body.torrentPath || '',
+    nfoPath,
+    mediaType: type,
+    torrentCreated: Boolean(body.torrentPath),
+    nfoCreated: true,
+    lacaleUpload: 'pending',
+    qbitPush: 'pending'
+  });
+
+  sendJson(res, 200, { ok: true, nfoPath, outputDir });
+}
+
+async function handleLaCalePreview(req, res) {
+  const body = await parseBody(req);
+  const title = body.title || (body.torrentPath ? path.basename(body.torrentPath, path.extname(body.torrentPath)) : '');
+  const preview = {
+    title,
+    category: body.category || 'Films',
+    tags: body.tags || ''
+  };
+  sendJson(res, 200, { ok: true, preview });
 }
 
 async function handleTransmission(req, res, cfg) {
@@ -523,15 +585,18 @@ async function route(req, res) {
       saveJson(CONFIG_PATH, merged);
       return sendJson(res, 200, { ok: true });
     }
-    if (req.method === 'GET' && req.url.startsWith('/api/browse')) return handleBrowse(req, res, cfg);
-    if (req.method === 'POST' && req.url === '/api/mediainfo') return handleMediainfo(req, res, cfg);
-    if (req.method === 'POST' && req.url === '/api/torrent/create') return handleCreateTorrent(req, res, cfg);
-    if (req.method === 'GET' && req.url.startsWith('/api/torrent/progress')) return handleSse(req, res);
-    if (req.method === 'GET' && req.url === '/api/qbit/categories') return handleQbitCategories(res, cfg);
-    if (req.method === 'POST' && req.url === '/api/torrent/push') return handlePushQbit(req, res, cfg);
-    if (req.method === 'POST' && req.url === '/api/lacale/upload') return handleUploadLaCale(req, res, cfg);
-    if (req.method === 'POST' && req.url === '/api/transmission/push') return handleTransmission(req, res, cfg);
-    if (req.method === 'POST' && req.url === '/api/deluge/push') return handleDeluge(req, res, cfg);
+    if (req.method === 'GET' && req.url.startsWith('/api/browse')) return await handleBrowse(req, res, cfg);
+    if (req.method === 'GET' && req.url.startsWith('/api/mediainfo')) return await handleMediainfoGet(req, res, cfg);
+    if (req.method === 'POST' && req.url === '/api/mediainfo') return await handleMediainfo(req, res, cfg);
+    if (req.method === 'POST' && req.url === '/api/torrent/create') return await handleCreateTorrent(req, res, cfg);
+    if (req.method === 'GET' && req.url.startsWith('/api/torrent/progress')) return await handleSse(req, res);
+    if (req.method === 'POST' && req.url === '/api/nfo/create') return await handleNfoCreate(req, res, cfg);
+    if (req.method === 'POST' && req.url === '/api/lacale/preview') return await handleLaCalePreview(req, res);
+    if (req.method === 'GET' && req.url === '/api/qbit/categories') return await handleQbitCategories(res, cfg);
+    if (req.method === 'POST' && req.url === '/api/torrent/push') return await handlePushQbit(req, res, cfg);
+    if (req.method === 'POST' && req.url === '/api/lacale/upload') return await handleUploadLaCale(req, res, cfg);
+    if (req.method === 'POST' && req.url === '/api/transmission/push') return await handleTransmission(req, res, cfg);
+    if (req.method === 'POST' && req.url === '/api/deluge/push') return await handleDeluge(req, res, cfg);
     if (req.method === 'GET' && req.url === '/api/history') return sendJson(res, 200, readJson(HISTORY_PATH, []));
 
     if (req.url.startsWith('/api/')) return sendJson(res, 404, { error: 'Not found' });
