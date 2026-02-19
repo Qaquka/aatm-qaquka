@@ -15,3 +15,6 @@ ul { list-style: none; padding: 0; margin: 0; max-height: 260px; overflow: auto;
 li { padding: 6px; border-bottom: 1px solid #1f2937; cursor: pointer; }
 li:hover { background: #1f2937; }
 @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+
+.bb-preview { background: #0a1020; border: 1px solid #334155; border-radius: 8px; padding: 10px; min-height: 120px; }
+.bb-preview img { max-width: 100%; }

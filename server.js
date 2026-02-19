@@ -44,8 +44,9 @@ const DEFAULT_CONFIG = {
   },
   lacale: {
     enabled: false,
-    apiUrl: '',
-    token: ''
+    apiUrl: 'https://la-cale.space/api/external/upload',
+    token: '',
+    passkey: ''
   },
   categoryMapping: {
     Films: 'Films',
@@ -453,15 +454,35 @@ async function handleUploadLaCale(req, res, cfg) {
   const torrentPath = path.resolve(body.torrentPath || '');
   if (!fs.existsSync(torrentPath)) return sendJson(res, 400, { error: 'torrentPath not found' });
 
-  const form = new FormData();
-  form.append('torrent', new Blob([fs.readFileSync(torrentPath)]), path.basename(torrentPath));
-  form.append('category', body.category || 'Films');
-  form.append('tags', body.tags || '');
-  form.append('title', body.title || path.basename(torrentPath, '.torrent'));
+  const categoryName = body.categoryName || body.category || 'Films';
+  const mappedCategoryId = cfg.categoryMapping && cfg.categoryMapping[categoryName] ? cfg.categoryMapping[categoryName] : body.categoryId;
+  if (!mappedCategoryId) return sendJson(res, 400, { error: `categoryId missing for category ${categoryName}` });
 
-  const response = await timedFetch(cfg.lacale.apiUrl, {
+  const tags = Array.isArray(body.tags)
+    ? body.tags.map((t) => String(t).trim()).filter(Boolean)
+    : String(body.tags || '').split(',').map((t) => t.trim()).filter(Boolean);
+
+  const title = body.title || path.basename(torrentPath, '.torrent');
+  const description = String(body.description || '').trim();
+
+  const form = new FormData();
+  if (cfg.lacale.passkey) form.append('passkey', cfg.lacale.passkey);
+  form.append('title', title);
+  form.append('description', description);
+  form.append('categoryId', String(mappedCategoryId));
+  if (body.tmdbId) form.append('tmdbId', String(body.tmdbId));
+  if (body.tmdbType) form.append('tmdbType', String(body.tmdbType));
+  for (const tag of tags) form.append('tags', tag);
+  form.append('file', new Blob([fs.readFileSync(torrentPath)]), path.basename(torrentPath));
+
+  const nfoPath = body.nfoPath ? path.resolve(body.nfoPath) : '';
+  if (nfoPath && fs.existsSync(nfoPath)) {
+    form.append('nfoFile', new Blob([fs.readFileSync(nfoPath)]), path.basename(nfoPath));
+  }
+
+  const response = await timedFetch(cfg.lacale.apiUrl || 'https://la-cale.space/api/external/upload', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${cfg.lacale.token}` },
+    headers: { 'X-Api-Key': cfg.lacale.token },
     body: form
   });
   const txt = await response.text();
@@ -475,7 +496,7 @@ async function handleUploadLaCale(req, res, cfg) {
     return sendJson(res, 502, { error: 'La-Cale upload failed', details: txt.slice(0, 500) });
   }
 
-  appendHistory({ sourcePath: body.sourcePath || '', torrentPath, nfoPath: body.nfoPath || '', mediaType: body.mediaType || '', torrentCreated: true, nfoCreated: true, lacaleUpload: 'ok', qbitPush: 'pending' });
+  appendHistory({ sourcePath: body.sourcePath || '', torrentPath, nfoPath: nfoPath || '', mediaType: body.mediaType || '', torrentCreated: true, nfoCreated: Boolean(nfoPath), lacaleUpload: 'ok', qbitPush: 'pending' });
   sendJson(res, 200, { ok: true, details: txt.slice(0, 500) });
 }
 
@@ -511,15 +532,26 @@ async function handleNfoCreate(req, res, cfg) {
   sendJson(res, 200, { ok: true, nfoPath, outputDir });
 }
 
-async function handleLaCalePreview(req, res) {
+async function handleLaCalePreview(req, res, cfg) {
   const body = await parseBody(req);
   const title = body.title || (body.torrentPath ? path.basename(body.torrentPath, path.extname(body.torrentPath)) : '');
-  const preview = {
-    title,
-    category: body.category || 'Films',
-    tags: body.tags || ''
-  };
-  sendJson(res, 200, { ok: true, preview });
+  const categoryName = body.categoryName || body.category || 'Films';
+  const categoryId = body.categoryId || (cfg.categoryMapping && cfg.categoryMapping[categoryName] ? cfg.categoryMapping[categoryName] : '');
+  const tags = Array.isArray(body.tags)
+    ? body.tags.map((t) => String(t).trim()).filter(Boolean)
+    : String(body.tags || '').split(',').map((t) => t.trim()).filter(Boolean);
+  const description = String(body.description || `[b]${title}[/b]\n[i]Upload NAS Edition[/i]`).trim();
+
+  sendJson(res, 200, {
+    ok: true,
+    preview: {
+      title,
+      categoryName,
+      categoryId,
+      tags,
+      description
+    }
+  });
 }
 
 async function handleTransmission(req, res, cfg) {
@@ -591,7 +623,7 @@ async function route(req, res) {
     if (req.method === 'POST' && req.url === '/api/torrent/create') return await handleCreateTorrent(req, res, cfg);
     if (req.method === 'GET' && req.url.startsWith('/api/torrent/progress')) return await handleSse(req, res);
     if (req.method === 'POST' && req.url === '/api/nfo/create') return await handleNfoCreate(req, res, cfg);
-    if (req.method === 'POST' && req.url === '/api/lacale/preview') return await handleLaCalePreview(req, res);
+    if (req.method === 'POST' && req.url === '/api/lacale/preview') return await handleLaCalePreview(req, res, cfg);
     if (req.method === 'GET' && req.url === '/api/qbit/categories') return await handleQbitCategories(res, cfg);
     if (req.method === 'POST' && req.url === '/api/torrent/push') return await handlePushQbit(req, res, cfg);
     if (req.method === 'POST' && req.url === '/api/lacale/upload') return await handleUploadLaCale(req, res, cfg);

@@ -2,6 +2,7 @@ const $ = (id) => document.getElementById(id);
 let selectedPath = '';
 let latestTorrentPath = '';
 let latestNfoPath = '';
+let latestLaCalePreview = null;
 
 async function api(url, options = {}) {
   const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
@@ -11,6 +12,28 @@ async function api(url, options = {}) {
 }
 
 function setText(id, text) { $(id).textContent = text; }
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function renderBbcodeToHtml(bbcode) {
+  let html = escapeHtml(bbcode || '');
+  html = html
+    .replace(/\[b\](.*?)\[\/b\]/gis, '<strong>$1</strong>')
+    .replace(/\[i\](.*?)\[\/i\]/gis, '<em>$1</em>')
+    .replace(/\[u\](.*?)\[\/u\]/gis, '<u>$1</u>')
+    .replace(/\[img\](.*?)\[\/img\]/gis, '<img src="$1" alt="img"/>')
+    .replace(/\[url=(.*?)\](.*?)\[\/url\]/gis, '<a href="$1" target="_blank" rel="noopener noreferrer">$2</a>')
+    .replace(/\[url\](.*?)\[\/url\]/gis, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>')
+    .replace(/\n/g, '<br/>');
+  return html;
+}
 
 async function loadConfig() {
   const cfg = await api('/api/config');
@@ -80,10 +103,51 @@ async function pushQbit() {
   }
 }
 
+async function previewLaCale() {
+  if (!latestTorrentPath) return setText('lacaleStatus', 'Aucun torrent généré.');
+  const payload = {
+    torrentPath: latestTorrentPath,
+    title: $('torrentPath').textContent && $('torrentPath').textContent !== '-' ? $('torrentPath').textContent.split('/').pop().replace(/\.torrent$/i, '') : '',
+    categoryName: $('lacaleCategory').value,
+    tags: $('lacaleTags').value,
+    description: $('lacaleDescription').value
+  };
+
+  try {
+    const data = await api('/api/lacale/preview', { method: 'POST', body: JSON.stringify(payload) });
+    latestLaCalePreview = data.preview;
+    setText('lacalePreviewRaw', JSON.stringify(data.preview, null, 2));
+    $('lacaleDescription').value = data.preview.description;
+    $('lacalePreviewHtml').innerHTML = renderBbcodeToHtml(data.preview.description);
+    setText('lacaleStatus', 'Prévisualisation La-Cale prête.');
+  } catch (e) {
+    setText('lacaleStatus', `❌ ${e.message}`);
+  }
+}
+
 async function pushLaCale() {
   if (!latestTorrentPath) return setText('lacaleStatus', 'Aucun torrent généré.');
+  if (!latestLaCalePreview) {
+    await previewLaCale();
+    if (!latestLaCalePreview) return;
+  }
+
+  const payload = {
+    torrentPath: latestTorrentPath,
+    nfoPath: latestNfoPath,
+    sourcePath: selectedPath,
+    mediaType: $('mediaType').value,
+    title: latestLaCalePreview.title,
+    categoryName: latestLaCalePreview.categoryName,
+    categoryId: latestLaCalePreview.categoryId,
+    tags: latestLaCalePreview.tags,
+    description: $('lacaleDescription').value,
+    tmdbId: latestLaCalePreview.tmdbId || '',
+    tmdbType: latestLaCalePreview.tmdbType || ''
+  };
+
   try {
-    const data = await api('/api/lacale/upload', { method: 'POST', body: JSON.stringify({ torrentPath: latestTorrentPath, category: $('lacaleCategory').value, tags: $('lacaleTags').value, sourcePath: selectedPath, nfoPath: latestNfoPath, mediaType: $('mediaType').value }) });
+    const data = await api('/api/lacale/upload', { method: 'POST', body: JSON.stringify(payload) });
     setText('lacaleStatus', `✅ Upload La-Cale OK\n${data.details || ''}`);
   } catch (e) {
     setText('lacaleStatus', `❌ ${e.message}`);
@@ -110,9 +174,13 @@ $('mediainfoBtn').onclick = runMediaInfo;
 $('createTorrentBtn').onclick = createTorrent;
 $('loadCatsBtn').onclick = loadQbitCategories;
 $('pushQbitBtn').onclick = pushQbit;
+$('previewLacaleBtn').onclick = previewLaCale;
 $('uploadLacaleBtn').onclick = pushLaCale;
 $('saveConfigBtn').onclick = saveConfig;
 $('refreshHistoryBtn').onclick = loadHistory;
+$('lacaleDescription').addEventListener('input', () => {
+  $('lacalePreviewHtml').innerHTML = renderBbcodeToHtml($('lacaleDescription').value);
+});
 
 (async () => {
   await loadConfig();

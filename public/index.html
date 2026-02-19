@@ -47,7 +47,13 @@
       <div>
         <h2>4) Upload La-Cale</h2>
         <label>Catégorie preview <input id="lacaleCategory" value="Films"/></label>
-        <label>Tags preview <input id="lacaleTags" value=""/></label>
+        <label>Tags preview (virgules) <input id="lacaleTags" value=""/></label>
+        <label>Description (BBCode)
+          <textarea id="lacaleDescription" rows="8" placeholder="[b]Titre[/b]\nDescription..."></textarea>
+        </label>
+        <button id="previewLacaleBtn">Prévisualiser le post La-Cale</button>
+        <pre id="lacalePreviewRaw"></pre>
+        <div id="lacalePreviewHtml" class="bb-preview"></div>
         <button id="uploadLacaleBtn">Uploader vers La-Cale</button>
         <pre id="lacaleStatus"></pre>
       </div>
