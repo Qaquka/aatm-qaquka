@@ -1,0 +1,42 @@
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Inter, Arial, sans-serif; background: #0b0f17; color: #e5e7eb; }
+header { padding: 18px 24px; border-bottom: 1px solid #1f2937; background: #111827; }
+main { max-width: 1200px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; width: 100%; overflow-x: hidden; }
+.panel { background: #121826; border: 1px solid #273042; border-radius: 12px; padding: 14px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid2 > * { min-width: 0; }
+.row { display: flex; gap: 8px; margin-bottom: 8px; }
+input, select, button, textarea { background: #0c1220; border: 1px solid #334155; color: #f3f4f6; border-radius: 8px; padding: 8px; }
+input, select, textarea { width: 100%; }
+button { cursor: pointer; }
+pre, code { background: #0a1020; border-radius: 8px; padding: 10px; display: block; overflow: auto; }
+textarea { min-height: 220px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+ul { list-style: none; padding: 0; margin: 0; max-height: 260px; overflow: auto; }
+li { padding: 6px; border-bottom: 1px solid #1f2937; cursor: pointer; }
+li:hover { background: #1f2937; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+
+.scrollbox {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  max-height: 380px;
+  overflow-y: auto;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+pre.scrollbox {
+  white-space: pre;
+}
+
+textarea.scrollbox,
+div.scrollbox {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.bb-preview { background: #0a1020; border: 1px solid #334155; border-radius: 8px; padding: 10px; min-height: 120px; }
+.bb-preview img { max-width: 100%; }

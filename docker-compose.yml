@@ -1,0 +1,14 @@
+services:
+  aatm-nas-edition:
+    build: .
+    container_name: aatm-nas-edition
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      REQUEST_TIMEOUT_MS: 20000
+    volumes:
+      - ./data:/app/data
+      - /mnt/nas/media:/nas/media
+      - /mnt/nas/output:/nas/output
+    restart: unless-stopped
