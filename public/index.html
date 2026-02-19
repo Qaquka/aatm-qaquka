@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>AATM NAS Edition</title>
+  <link rel="stylesheet" href="/styles.css"/>
+</head>
+<body>
+  <header>
+    <h1>AATM NAS Edition</h1>
+    <p>Workflow NAS complet + push qBittorrent distant (category only)</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>1) Explorateur NAS</h2>
+      <div class="row">
+        <input id="pathInput" type="text"/>
+        <button id="browseBtn">Parcourir</button>
+      </div>
+      <ul id="entries"></ul>
+      <p>Sélection: <code id="selectedPath">-</code></p>
+    </section>
+
+    <section class="panel grid2">
+      <div>
+        <h2>2) MediaInfo</h2>
+        <button id="mediainfoBtn">Analyser</button>
+        <pre id="mediainfoOut"></pre>
+      </div>
+      <div>
+        <h2>3) Torrent + NFO</h2>
+        <label>Type média
+          <select id="mediaType">
+            <option>Films</option><option>Series</option><option>Ebooks</option><option>Jeux</option>
+          </select>
+        </label>
+        <button id="createTorrentBtn">Créer .torrent + NFO</button>
+        <pre id="torrentProgress"></pre>
+        <p>Torrent: <code id="torrentPath">-</code></p>
+        <p>NFO: <code id="nfoPath">-</code></p>
+      </div>
+    </section>
+
+    <section class="panel grid2">
+      <div>
+        <h2>4) Upload La-Cale</h2>
+        <label>Catégorie preview <input id="lacaleCategory" value="Films"/></label>
+        <label>Tags preview (virgules) <input id="lacaleTags" value=""/></label>
+        <label>Description (BBCode)
+          <textarea id="lacaleDescription" rows="8" placeholder="[b]Titre[/b]\nDescription..."></textarea>
+        </label>
+        <button id="previewLacaleBtn">Prévisualiser le post La-Cale</button>
+        <pre id="lacalePreviewRaw"></pre>
+        <div id="lacalePreviewHtml" class="bb-preview"></div>
+        <button id="uploadLacaleBtn">Uploader vers La-Cale</button>
+        <pre id="lacaleStatus"></pre>
+      </div>
+      <div>
+        <h2>5) Push Seedbox (qBittorrent)</h2>
+        <div class="row">
+          <select id="qbitCategory"></select>
+          <input id="qbitTags" placeholder="tags optionnels"/>
+        </div>
+        <div class="row">
+          <button id="loadCatsBtn">Charger catégories</button>
+          <button id="pushQbitBtn">Envoyer vers seedbox</button>
+        </div>
+        <pre id="qbitStatus"></pre>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>6) Configuration</h2>
+      <textarea id="configJson"></textarea>
+      <button id="saveConfigBtn">Sauvegarder config</button>
+      <pre id="configStatus"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>7) Historique</h2>
+      <button id="refreshHistoryBtn">Rafraîchir</button>
+      <pre id="historyOut"></pre>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
