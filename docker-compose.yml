@@ -1,14 +1,56 @@
 services:
-  aatm-nas-edition:
+  aatm-api:
     build: .
-    container_name: aatm-nas-edition
-    ports:
-      - "3000:3000"
-    environment:
-      PORT: 3000
-      REQUEST_TIMEOUT_MS: 20000
-    volumes:
-      - ./data:/app/data
-      - /mnt/nas/media:/nas/media
-      - /mnt/nas/output:/nas/output
+    container_name: aatm-api
     restart: unless-stopped
+    ports:
+      # Accès local direct (sans SSL) pour les utilisateurs du réseau local
+      - "${AATM_API_PORT:-8085}:8080"
+      - "${AATM_QBIT_PORT:-8086}:8081"  # qBittorrent WebUI
+      - "6881:6881"  # qBittorrent torrent port
+      - "6881:6881/udp"
+    networks:
+      - gateway-network
+    volumes:
+      # Database persistence
+      - ./data:/data
+      # qBittorrent config persistence
+      - ./qbt-config:/config/qBittorrent
+      # Full filesystem access for navigation (read-only)
+      - /:/host:ro
+      # ============================================================
+      # IMPORTANT: Hardlinks & Write Access
+      # ============================================================
+      # Les répertoires ci-dessous sont montés en ÉCRITURE pour permettre:
+      #   - La création de hardlinks
+      #   - La sauvegarde des fichiers .torrent et .nfo
+      #
+      # Par défaut: /mnt, /media, /home sont activés.
+      #
+      # Si vos médias ou répertoires de hardlinks sont ailleurs,
+      # ajoutez une ligne similaire:
+      #   - /votre/chemin:/host/votre/chemin
+      #
+      # Exemple pour /data ou /srv:
+      #   - /data:/host/data
+      #   - /srv:/host/srv
+      # ============================================================
+      - /mnt:/host/mnt
+      - /media:/host/media
+      - /home:/host/home
+      # Output torrents directory
+      - ./torrents:/torrents
+    environment:
+      - PORT=8080
+      - DATA_DIR=/data
+      - QBT_WEBUI_PORT=8081
+      - TZ=${TZ:-Europe/Paris}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  gateway-network:
+    external: true
