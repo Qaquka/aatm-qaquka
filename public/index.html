@@ -27,7 +27,7 @@
       <div>
         <h2>2) MediaInfo</h2>
         <button id="mediainfoBtn">Analyser</button>
-        <pre id="mediainfoOut"></pre>
+        <pre id="mediainfoOut" class="scrollbox"></pre>
       </div>
       <div>
         <h2>3) Torrent + NFO</h2>
@@ -37,7 +37,7 @@
           </select>
         </label>
         <button id="createTorrentBtn">Créer .torrent + NFO</button>
-        <pre id="torrentProgress"></pre>
+        <pre id="torrentProgress" class="scrollbox"></pre>
         <p>Torrent: <code id="torrentPath">-</code></p>
         <p>NFO: <code id="nfoPath">-</code></p>
       </div>
@@ -49,13 +49,13 @@
         <label>Catégorie preview <input id="lacaleCategory" value="Films"/></label>
         <label>Tags preview (virgules) <input id="lacaleTags" value=""/></label>
         <label>Description (BBCode)
-          <textarea id="lacaleDescription" rows="8" placeholder="[b]Titre[/b]\nDescription..."></textarea>
+          <textarea id="lacaleDescription" class="scrollbox" rows="8" placeholder="[b]Titre[/b]\nDescription..."></textarea>
         </label>
         <button id="previewLacaleBtn">Prévisualiser le post La-Cale</button>
-        <pre id="lacalePreviewRaw"></pre>
-        <div id="lacalePreviewHtml" class="bb-preview"></div>
+        <pre id="lacalePreviewRaw" class="scrollbox"></pre>
+        <div id="lacalePreviewHtml" class="bb-preview scrollbox"></div>
         <button id="uploadLacaleBtn">Uploader vers La-Cale</button>
-        <pre id="lacaleStatus"></pre>
+        <pre id="lacaleStatus" class="scrollbox"></pre>
       </div>
       <div>
         <h2>5) Push Seedbox (qBittorrent)</h2>
@@ -67,21 +67,21 @@
           <button id="loadCatsBtn">Charger catégories</button>
           <button id="pushQbitBtn">Envoyer vers seedbox</button>
         </div>
-        <pre id="qbitStatus"></pre>
+        <pre id="qbitStatus" class="scrollbox"></pre>
       </div>
     </section>
 
     <section class="panel">
       <h2>6) Configuration</h2>
-      <textarea id="configJson"></textarea>
+      <textarea id="configJson" class="scrollbox"></textarea>
       <button id="saveConfigBtn">Sauvegarder config</button>
-      <pre id="configStatus"></pre>
+      <pre id="configStatus" class="scrollbox"></pre>
     </section>
 
     <section class="panel">
       <h2>7) Historique</h2>
       <button id="refreshHistoryBtn">Rafraîchir</button>
-      <pre id="historyOut"></pre>
+      <pre id="historyOut" class="scrollbox"></pre>
     </section>
   </main>
 
